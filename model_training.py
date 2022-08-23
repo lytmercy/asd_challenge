@@ -5,13 +5,15 @@ from keras.metrics import Metric
 
 import pandas as pd
 import matplotlib.pyplot as plt
+from sklearn.model_selection import train_test_split as dataset_split
 
 # importing class for preprocessing data, and function for create image paths array
-from preprocessing_data import PreprocessData, create_image_paths
+from preprocessing_data import PreprocessData
 # importing global variable from globals.py
-from globals import IMAGE_SIZE, EPOCHS, TRAIN_DIR, TRAIN_GROUND_TRUTH, VALIDATION_DIR, VALIDATION_GROUND_TRUTH
+from globals import IMAGE_SIZE, EPOCHS, TRAIN_DIR, TRAIN_GROUND_TRUTH
 
 
+# Creating DiceScore class for use metric dice score (f1-score) in model compile metrics
 class DiceScore(Metric):
     def __init__(self, name='dice_score', dtype='float32', threshold=0.5, **kwargs):
         super().__init__(name=name, dtype=dtype, **kwargs)
@@ -46,9 +48,9 @@ class DiceScore(Metric):
         self.false_negatives.assign_add(tf.reduce_sum(false_negatives))
 
     def result(self):
-        precision = self.true_positives / (self.true_positives + self.false_positives)
-        recall = self.true_positives / (self.true_positives + self.false_negatives)
-        return precision * recall * 2.0 / (precision + recall)
+        numerator = self.true_positives * 2.0
+        denominator = (self.true_positives * 2.0) + self.false_positives + self.false_negatives
+        return numerator / denominator
 
     def reset_state(self):
         self.true_positives.assign(0)
@@ -62,14 +64,16 @@ def model_train(model: Model):
     :param model: built Keras model.
     :return: trained model.
     """
-    # Initializing paths of data
-    train_paths = create_image_paths(TRAIN_DIR, TRAIN_GROUND_TRUTH)
-    validation_paths = create_image_paths(VALIDATION_DIR, VALIDATION_GROUND_TRUTH)
 
-    train_gen = PreprocessData(train_paths, TRAIN_GROUND_TRUTH)
-    validation_gen = PreprocessData(validation_paths, VALIDATION_GROUND_TRUTH)
+    # Set train & ground truth paths
+    train_path = TRAIN_DIR
+    train_ground_truth_path = TRAIN_GROUND_TRUTH
 
-    print(train_paths)
+    # Initializing dataset class
+    train_dataset_gen = PreprocessData(train_path, train_ground_truth_path)
+
+    # Splitting dataset on train & validation sets
+    train_data, valid_data = train_dataset_gen.get_dataset()
 
     # Initializing class DiceScore for metrics in compiling the model
     dice_score = DiceScore()
@@ -89,7 +93,11 @@ def model_train(model: Model):
 
     # Train the model, doing validation at the end of each epoch.
     epochs = EPOCHS
-    model_history = model.fit(train_gen, epochs=epochs, validation_data=validation_gen, callbacks=callbacks)
+    model_history = model.fit(train_data,
+                              epochs=epochs,
+                              validation_data=valid_data,
+                              validation_steps=len(valid_data),
+                              callbacks=callbacks)
 
     # Plotting history of model training curves
     pd.DataFrame(model_history.history).plot()

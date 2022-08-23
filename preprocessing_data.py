@@ -4,10 +4,14 @@ from keras_preprocessing.image import load_img
 
 import numpy as np
 import pandas as pd
+from sklearn.model_selection import train_test_split as dataset_split
 
 import os
 # importing global variables
 from globals import BATCH_SIZE, IMAGE_SIZE
+
+# set global variable AUTOTUNE (from TensorFlow)
+AUTOTUNE = tf.data.experimental.AUTOTUNE
 
 
 # create function for decoding run-length mask from "train_ship_segmentations_v2.csv"
@@ -45,67 +49,61 @@ def tf_rle_decode(rle_string, shape=(768, 768)):
     return tf.reshape(mask_flat, shape_tensor)
 
 
-def create_image_paths(image_dir, ground_truth):
-    """
-    Function for build array with correct & clean image paths
-    :param image_dir: string with path of directory with images.
-    :param ground_truth: string with path of *.csv file of ground truth for images.
-    :return: sorted array with all image paths in image_dir.
-    """
-    ground_truth_dataframe = pd.read_csv(ground_truth)
-    return sorted(
-        [
-            os.path.join(image_dir, fname)
-            for fname in os.listdir(image_dir)
-            if fname.endswith('.jpg') & ground_truth_dataframe['ImageId'].searchsorted(fname) == fname[0]
-        ]
-    )
-
-
-class PreprocessData(Sequence):
+class PreprocessData:
 
     def __init__(self, image_paths, image_ground_truth):
         self.batch_size = BATCH_SIZE
         self.image_size = IMAGE_SIZE
 
         self.input_image_paths = image_paths
-        self.input_ground_truth = image_ground_truth
+        self.input_ground_truth = pd.read_csv(image_ground_truth)
 
-    def __len__(self):
-        return len(self.input_ground_truth) // self.batch_size
+        self.tensor_of_paths = None
+        self.tensor_dataset = None
 
-    def __getitem__(self, idx):
-        """ Method for preprocessing train image and ground truth
-        :returns tuple (input, masks) correspond to batch #idx.
+        self.create_image_paths()
+
+    def create_image_paths(self):
         """
-        i = idx * self.batch_size
-        batch_input_image_paths = self.input_image_paths[i:i + self.batch_size]
-        ground_truth_dataframe = pd.read_csv(self.input_ground_truth)
-        # Create x variable for train image
-        x = np.zeros((self.batch_size,) + self.image_size + (3,), dtype='float32')
-        # Create y variable for train ground truth masks
-        y = np.zeros((self.batch_size,) + self.image_size + (1,), dtype='uint8')
-        for j, path in enumerate(batch_input_image_paths):
-            image = load_img(path, target_size=self.image_size)
-            x[j] = image
+        Method for build tensor with correct image paths that have ground truth in input_ground_truth (*.csv file)
+        :param image_dir: string with path of directory with images.
+        :param ground_truth: string with path of *.csv file of ground truth for images.
+        :return: sorted array with all image paths in image_dir.
+        """
+        # self.tensor_of_paths = tf.data.Dataset.from_tensors(tf.convert_to_tensor())
+        for fname in os.listdir(self.input_image_paths):
+            if fname.endswith('.jpg') & self.input_ground_truth[self.input_ground_truth['ImageId'] == fname &
+                                                                self.input_ground_truth['EncodedPixels'] is not None]:
+                print(fname)
+                self.tensor_of_paths.append(os.path.join(self.input_image_paths, fname))
+        print(self.tensor_of_paths)
 
-            image_id = path.split('\\')[-1]
-            # Make a list with the masks that image_id match
-            image_masks = ground_truth_dataframe.loc[ground_truth_dataframe['ImageId'] == image_id,
-                                                     'EncodedPixels'].tolist()
+    def decode_image(self, image):
+        """"""
+        image = tf.image.decode_jpeg(image, channels=3)  # colour images
+        # convert uint8 tensor to floats in the [0, 1] range
+        image = tf.image.convert_image_dtype(image, tf.float32)
+        # resize the image into image_size
+        return tf.image.resize(image, [self.image_size])
 
-            if pd.isnull(image_masks[0]):
-                print(image_masks[0])
-                continue
+    def process_dataset(self, image_paths):
+        """"""
+        image_id = tf.strings.split(image_paths, '\\')[-1]
+        ground_truth_for_image = self.input_ground_truth.loc[self.input_ground_truth['ImageId'] == image_id,
+                                                             'ImageId'].tolist()
+        all_masks = tf.zeros(self.image_size)
 
-            # Take the individual ship masks and create a single mask array for all ships
-            all_masks = tf.zeros((768, 768), tf.uint8)
-            for mask in image_masks:
-                all_masks += tf.transpose(tf_rle_decode(mask, self.image_size))
-            y[j] = tf.expand_dims(all_masks, 2)
+        for mask in ground_truth_for_image:
+            all_masks = tf.add(all_masks, tf_rle_decode(mask))
 
-        x = tf.convert_to_tensor(x, dtype=tf.float32)
-        y = tf.convert_to_tensor(y, dtype=tf.float32)
+        image = tf.io.read_file(image_paths)
+        image = self.decode_image(image)
+        return image, all_masks
 
-        return x, y
+    def get_dataset(self):
+        """"""
+        self.tensor_dataset = self.tensor_of_paths.map(self.process_dataset, num_parallel_calls=AUTOTUNE)
 
+        train_set, valid_set = dataset_split(self.tensor_dataset, test_size=0.2, train_size=0.8)
+
+        return train_set, valid_set

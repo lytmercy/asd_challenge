@@ -6,10 +6,10 @@ import matplotlib.pyplot as plt
 import matplotlib.image as mpimg
 
 # importing class for data preprocessing and function for creating image paths array
-from preprocessing_data import PreprocessData, create_image_paths
+from preprocessing_data import PreprocessData
 
 # importing global variable from globals.py
-from globals import VALIDATION_DIR, VALIDATION_GROUND_TRUTH
+from globals import TEST_DIR, TEST_GROUND_TRUTH
 
 
 def display_mask(i, val_image_path, val_preds):
@@ -31,19 +31,27 @@ def inference(model: Model, image_number):
     :param image_number: image number that will be used for prediction.
     """
 
-    validation_paths = create_image_paths(VALIDATION_DIR)
+    # Set test & ground_truth paths
+    test_path = TEST_DIR
+    test_ground_truth_path = TEST_GROUND_TRUTH
 
-    validation_gen = PreprocessData(validation_paths, VALIDATION_GROUND_TRUTH)
+    # Initializing test dataset class
+    test_dataset_gen = PreprocessData(test_path, test_ground_truth_path)
 
-    val_preds = model.predict(validation_gen)
+    # Get test dataset
+    test_data, _ = test_dataset_gen.get_dataset()
+
+    val_preds = model.predict(test_data)
 
     # Display results for validation image #number
     i = image_number
 
     # Display  input image
-    plt.imshow(validation_paths[i])
-    plt.axis('False')
-    plt.show()
+    for image, ground_truth in test_data.take(1):
+        plt.imshow(image)
+        plt.axis('False')
+        plt.show()
+
 
     # Display mask predicted by our model
-    display_mask(i, validation_paths[i], val_preds)
+    display_mask(i, test_data[i], val_preds)
