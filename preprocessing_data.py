@@ -1,34 +1,32 @@
 import tensorflow as tf
+# import Sequence class for creating own DataGenerator class
 from keras.utils import Sequence
-from keras_preprocessing.image import load_img
 
+# import other libraries
 import numpy as np
-import pandas as pd
-from sklearn.model_selection import train_test_split as dataset_split
 
-import os
 # importing global variables
 from globals import BATCH_SIZE, IMAGE_SIZE
 
-# set global variable AUTOTUNE (from TensorFlow)
-AUTOTUNE = tf.data.experimental.AUTOTUNE
 
-
-# create function for decoding run-length mask from "train_ship_segmentations_v2.csv"
 def tf_rle_decode(rle_string, shape=(768, 768)):
     """
     Function for decoding run-length encoding mask from string.
 
-    :param rle_string: run-length string from csv file
-    :param shape: shape of output image
+    :param rle_string: run-length string from csv file;
+    :param shape: shape of output image;
     :return: tensor as image mask
     """
+    # Initialize tensor as shape of image
     shape_tensor = tf.convert_to_tensor(shape, tf.int64)
+    # Initialize tensor of image size
     size = tf.math.reduce_prod(shape)
 
+    # Split and convert string to tensor of number from string
     rle_tensor = tf.strings.split(rle_string)
     rle_tensor = tf.strings.to_number(rle_tensor, tf.int64)
 
+    # Split start and lengths data from rle string
     starts = rle_tensor[::2] - 1
     lengths = rle_tensor[1::2]
 
@@ -49,61 +47,150 @@ def tf_rle_decode(rle_string, shape=(768, 768)):
     return tf.reshape(mask_flat, shape_tensor)
 
 
-class PreprocessData:
+def train_valid_ids_split(list_ids, train_split=0.8):
+    """
+    Function for split list_ids to train and valid list with ids
+    :param list_ids: list with train list_ids;
+    :param train_split: float per cent value of training split;
+    :return: two list of train and test ids.
+    """
+    # define size of list with ids
+    list_size = np.size(list_ids)
 
-    def __init__(self, image_paths, image_ground_truth):
-        self.batch_size = BATCH_SIZE
-        self.image_size = IMAGE_SIZE
+    # define train size of list with ids
+    train_size = int(train_split * list_size)
 
-        self.input_image_paths = image_paths
-        self.input_ground_truth = pd.read_csv(image_ground_truth)
+    # Set train & valid list with ids
+    train_list_ids = list_ids[:train_size]
+    valid_list_ids = list_ids[train_size:]
 
-        self.tensor_of_paths = None
-        self.tensor_dataset = None
+    return train_list_ids, valid_list_ids
 
-        self.create_image_paths()
 
-    def create_image_paths(self):
+def load_prepare_image(image_path, image_size):
+    """ Loading and processing image from directory """
+    image = tf.io.read_file(image_path)
+    tensor_size = tf.constant(image_size)
+    decoded_image = tf.image.decode_jpeg(image, channels=3)  # colour images
+    # Convert uint8 tensor to floats in the [0, 1] range
+    # decoded_image = tf.image.convert_image_dtype(decoded_image, tf.float32)
+    # Resize the image into image_size
+    decoded_image = tf.image.resize(decoded_image, size=tensor_size)
+
+    return decoded_image
+
+
+class DataGenerator(Sequence):
+    """ Class generates data for Keras model """
+
+    def __init__(self, list_ids, ground_truth_dataframe, mode='fit',
+                 base_path='dataset\\train_v2', batch_size=BATCH_SIZE, img_size=IMAGE_SIZE,
+                 color_channels=3, random_state=17, shuffle=True):
         """
-        Method for build tensor with correct image paths that have ground truth in input_ground_truth (*.csv file)
-        :param image_dir: string with path of directory with images.
-        :param ground_truth: string with path of *.csv file of ground truth for images.
-        :return: sorted array with all image paths in image_dir.
+        Initialize attributes for class;
+        :param list_ids: list with ids that data will be generated for;
+        :param ground_truth_dataframe: dataframe with data that will be generated for ids from list_ids;
+        :param mode: string variable that indicate data generated mode;
+        :param base_path: string with the path where the images are stored;
+        :param batch_size: number of the batch size;
+        :param img_size: the shape of the image that will be processed in the model;
+        :param color_channels: number of color channels;
+        :param random_state: random state for shuffle image ids from list_ids;
+        :param shuffle: bool that indicates, shuffling image ids or not;
         """
-        # self.tensor_of_paths = tf.data.Dataset.from_tensors(tf.convert_to_tensor())
-        for fname in os.listdir(self.input_image_paths):
-            if fname.endswith('.jpg') & self.input_ground_truth[self.input_ground_truth['ImageId'] == fname &
-                                                                self.input_ground_truth['EncodedPixels'] is not None]:
-                print(fname)
-                self.tensor_of_paths.append(os.path.join(self.input_image_paths, fname))
-        print(self.tensor_of_paths)
+        self.image_size = img_size
+        self.batch_size = batch_size
+        self.ground_truth_dataframe = ground_truth_dataframe
+        self.mode = mode
+        self.base_path = base_path
+        self.list_ids = list_ids
+        self.color_channels = color_channels
+        self.shuffle = shuffle
+        self.random_state = random_state
+        # init indexes for store all indexes
+        self.indexes = None
 
-    def decode_image(self, image):
-        """"""
-        image = tf.image.decode_jpeg(image, channels=3)  # colour images
-        # convert uint8 tensor to floats in the [0, 1] range
-        image = tf.image.convert_image_dtype(image, tf.float32)
-        # resize the image into image_size
-        return tf.image.resize(image, [self.image_size])
+        # run on_epoch_end method for shuffle and init 'indexes' attribute
+        self.on_epoch_end()
+        # first set random seed
+        np.random.seed(self.random_state)
 
-    def process_dataset(self, image_paths):
-        """"""
-        image_id = tf.strings.split(image_paths, '\\')[-1]
-        ground_truth_for_image = self.input_ground_truth.loc[self.input_ground_truth['ImageId'] == image_id,
-                                                             'ImageId'].tolist()
-        all_masks = tf.zeros(self.image_size)
+    def __len__(self):
+        """Denotes the number of batches per epoch"""
+        return int(np.floor(len(self.list_ids) / self.batch_size))
 
-        for mask in ground_truth_for_image:
-            all_masks = tf.add(all_masks, tf_rle_decode(mask))
+    def __getitem__(self, index):
+        """Generate one batch of data"""
+        # Generate indexes of the batch
+        indexes = self.indexes[index * self.batch_size:(index+1) * self.batch_size]
 
-        image = tf.io.read_file(image_paths)
-        image = self.decode_image(image)
-        return image, all_masks
+        # Find list of IDs
+        list_ids_batch = [self.list_ids[k] for k in indexes]
 
-    def get_dataset(self):
-        """"""
-        self.tensor_dataset = self.tensor_of_paths.map(self.process_dataset, num_parallel_calls=AUTOTUNE)
+        # Generate X variable that contains images
+        X = self.__generate_x(list_ids_batch)
 
-        train_set, valid_set = dataset_split(self.tensor_dataset, test_size=0.2, train_size=0.8)
+        # Check string attribute mode for 'fit' mode
+        if self.mode == 'fit':
+            # Generate y variable that contains masks for images
+            y = self.__generate_y(list_ids_batch)
+            # And return both X and y variables
+            return X, y
+        # Check string attribute mode for 'predict' mode
+        elif self.mode == 'predict':
+            # Return only one variable X (images)
+            return X
+        else:
+            # When mode is not 'fit' or 'predict' then rise Attribute Error
+            raise AttributeError("The mode parameter should be set to 'fit' or 'predict'.")
 
-        return train_set, valid_set
+    def on_epoch_end(self):
+        """Updates indexes after each epoch"""
+        self.indexes = np.arange(len(self.list_ids))
+        if self.shuffle is True:
+            np.random.seed(self.random_state)
+            np.random.shuffle(self.indexes)
+
+    def __generate_x(self, list_ids_batch):
+        """Generates data (images) in the current batch sample"""
+        # Initialization X as an emtpy NumPy array
+        X = np.empty((self.batch_size, *self.image_size, self.color_channels))
+
+        # Generate data from ground_truth_dataframe with ids from list_ids_batch
+        for i, ID in enumerate(list_ids_batch):
+            image_id = self.ground_truth_dataframe['ImageId'].iloc[ID]
+            image_path = f"{self.base_path}\\{image_id}"
+            image = load_prepare_image(image_path, self.image_size)
+
+            # Store sample image in NumPy array
+            X[i, ] = image
+
+        return X
+
+    def __generate_y(self, list_ids_batch):
+        """Generates masks for the image in the current batch sample"""
+        # Initialization y as an empty NumPy array
+        y = np.empty((self.batch_size, *self.image_size, self.color_channels))
+
+        # Generate masks from ground_truth_dataframe with ids from list_ids_batch
+        for i, ID in enumerate(list_ids_batch):
+            image_id = self.ground_truth_dataframe['ImageId'].iloc[ID]
+            ground_truth_dataframe = self.ground_truth_dataframe[self.ground_truth_dataframe['ImageId'] == image_id]
+
+            coded_rle_strings = ground_truth_dataframe['EncodedPixels'].values
+
+            all_masks = tf.zeros((768, 768), dtype=tf.uint8)
+            for mask in coded_rle_strings:
+                all_masks += tf.transpose(tf_rle_decode(mask))
+
+            # Resize masks to image_size for model
+            all_masks = tf.image.resize(tf.expand_dims(all_masks, -1), size=self.image_size)
+
+            # # Normalize mask
+            # all_masks = all_masks / 255.
+
+            # Store sample mask in NumPy array
+            y[i, ] = all_masks
+
+        return y
+
