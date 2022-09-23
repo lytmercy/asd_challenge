@@ -5,6 +5,7 @@
 
 ## About Project
 That my implementation for Airbus Ship Detection Challenge.
+Dataset downloaded from Kaggle [Challenge](https://www.kaggle.com/competitions/airbus-ship-detection/data), you also can download it if you have Kaggle account.
 My model based on TensorFlow/Keras frameworks. 
 Implementation containing model architecture such as a simple U-Net for image semantic segmentation.
 In project also used the libraries: NumPy, Pandas and Matplotlib.
