@@ -11,11 +11,10 @@ from globals import BATCH_SIZE, IMAGE_SIZE
 
 def tf_rle_decode(rle_string, shape=(768, 768)):
     """
-    Function for decoding run-length encoding mask from string.
-
+    Function for decoding run-length encoding mask from string;
     :param rle_string: run-length string from csv file;
     :param shape: shape of output image;
-    :return: tensor as image mask
+    :return: tensor as image mask.
     """
     # Initialize tensor as shape of image
     shape_tensor = tf.convert_to_tensor(shape, tf.int64)
@@ -73,7 +72,7 @@ def load_prepare_image(image_path, image_size):
     tensor_size = tf.constant(image_size)
     decoded_image = tf.image.decode_jpeg(image, channels=3)  # colour images
     # Convert uint8 tensor to floats in the [0, 1] range
-    # decoded_image = tf.image.convert_image_dtype(decoded_image, tf.float32)
+    decoded_image = tf.image.convert_image_dtype(decoded_image, tf.float32)
     # Resize the image into image_size
     decoded_image = tf.image.resize(decoded_image, size=tensor_size)
 
@@ -170,7 +169,7 @@ class DataGenerator(Sequence):
     def __generate_y(self, list_ids_batch):
         """Generates masks for the image in the current batch sample"""
         # Initialization y as an empty NumPy array
-        y = np.empty((self.batch_size, *self.image_size, self.color_channels))
+        y = np.empty((self.batch_size, *self.image_size, 1))
 
         # Generate masks from ground_truth_dataframe with ids from list_ids_batch
         for i, ID in enumerate(list_ids_batch):
@@ -186,11 +185,7 @@ class DataGenerator(Sequence):
             # Resize masks to image_size for model
             all_masks = tf.image.resize(tf.expand_dims(all_masks, -1), size=self.image_size)
 
-            # # Normalize mask
-            # all_masks = all_masks / 255.
-
             # Store sample mask in NumPy array
             y[i, ] = all_masks
 
         return y
-

@@ -13,29 +13,29 @@ from keras import layers
 
 def get_model(image_size, num_classes):
     """
-    Function for construct the model.
-    :param image_size:
-    :param num_classes:
-    :return:
+    Function for construct the model;
+    :param image_size: size of the images which will be used model when getting data;
+    :param num_classes: that number of classes that model will be predicted on the image;
+    :return: built Keras model.
     """
     # Create data augmentation layer
     data_augmentation = Sequential([
         RandomFlip('horizontal'),  # randomly flip images on horizontal edge
-        RandomRotation(0.2),  # randomly rotate images by a specific amount
+        RandomRotation(0.1),  # randomly rotate images by a specific amount
         RandomHeight(0.003),  # randomly adjust the height of an image by a specific amount
         RandomWidth(0.003),  # randomly adjust the width of an image by a specific amount
-        RandomZoom(0.2),  # randomly zoom into an image
+        RandomZoom(0.1),  # randomly zoom into an image
     ])
 
     # Initialize Input layer
     inputs = Input(shape=image_size + (3,))
     # Initialize Data augmentation layer
-    x = data_augmentation(inputs)  # augment images (only happens during training)
+    # x = data_augmentation(inputs)  # augment images (only happens during training)
 
     # ## [First half of the network: down-sampling inputs] ## #
 
     # Entry block
-    x = Conv2D(32, 3, strides=2, padding='same')(x)
+    x = Conv2D(32, 3, strides=2, padding='same')(inputs)
     x = BatchNormalization()(x)
     x = Activation('relu')(x)
 
@@ -80,7 +80,7 @@ def get_model(image_size, num_classes):
         previous_block_activation = x  # Set aside next residual
 
     # Add a per-pixel classification layer
-    outputs = Conv2D(num_classes, 3, activation='softmax', padding='same')(x)
+    outputs = Conv2D(num_classes, 3, activation='sigmoid', padding='same')(x)
 
     # Define the model
     model = Model(inputs, outputs)

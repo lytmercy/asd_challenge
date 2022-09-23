@@ -16,7 +16,7 @@ global MODEL_WEIGHT_SAVING_PATH
 # Set globals
 BATCH_SIZE = 22
 IMAGE_SIZE = (160, 160)
-EPOCHS = 6
+EPOCHS = 4
 
 TRAIN_DIR = 'dataset\\train_v2'
 TRAIN_GROUND_TRUTH = 'dataset\\train_ship_segmentations_v2.csv'
