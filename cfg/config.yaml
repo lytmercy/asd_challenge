@@ -1,0 +1,40 @@
+# Dataset parameters (paths with image, and path to ground truth files)
+dataset:
+  # Train ground truth & dir
+  train_gt: "../input/dataset/train_ship_segmentations_v2.csv"
+  train_dir: "../input/dataset/train_v2"
+  # Test dir
+  test_dir: "../input/dataset/test_v2"
+
+# Output paths for results
+output:
+  original: "../output/results/original.png"
+  segmented: "../output/results/segmented.png"
+
+# Model parameters for saving entire model or them weights
+model:
+  # Trained model save paths
+  trained_paths:
+    # Model save path
+    entire: "../models/trained/model/asd_model"
+    # Weights save path
+    weights: "../models/trained/weights/asd_weights"
+  # Checkpoint paths
+  ckpt_paths:
+    # Save path
+    entire: "../models/checkpoint/model/cp.ckpt"
+    # Weight path
+    weights: "../models/checkpoint/weights/cp.ckpt"
+
+# Preprocess default parameters
+preprocess:
+  image_size: [256, 256]
+  color_channels: 3
+  batch_size: 20
+
+# Hyperparameters
+hyper:
+  epochs: 10
+  initial_epoch: 0
+  # Learning rate
+  lr_rate: 1e-3
