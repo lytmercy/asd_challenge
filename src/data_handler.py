@@ -17,7 +17,7 @@ class DataGenerator(Sequence):
                  list_ids: List[str],
                  ground_truth_df: pd.DataFrame,
                  mode: str = 'fit',
-                 base_path: str = 'dataset\\train_v2',
+                 base_path: str = '../input/dataset/train_v2',
                  batch_size: int = 32,
                  img_size: Tuple[int, int] = (256, 256),
                  color_channels: int = 3,
@@ -120,9 +120,10 @@ class DataGenerator(Sequence):
             # (768, 768) - it's shape of ground truth masks
             all_masks = tf.zeros((768, 768), dtype=tf.uint8)
             # Iter through rle strings of all masks for concrete image
-            for mask in coded_rle_strings:
-                # Add mask to only one tensor for all masks
-                all_masks += tf.transpose(tf_rle_decode(mask))
+            if coded_rle_strings[0] is not np.nan:
+                for mask in coded_rle_strings:
+                    # Add mask to only one tensor for all masks
+                    all_masks += tf.transpose(tf_rle_decode(mask))
                 
             # Resize masks to image_size for model
             all_masks = tf.image.resize(tf.expand_dims(all_masks, -1), size=self.image_size)

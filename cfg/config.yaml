@@ -1,15 +1,16 @@
 # Dataset parameters (paths with image, and path to ground truth files)
 dataset:
   # Train ground truth & dir
-  train_gt: "../input/dataset/train_ship_segmentations_v2.csv"
+  gt_path: "../input/dataset/train_ship_segmentations_v2.csv"
   train_dir: "../input/dataset/train_v2"
   # Test dir
   test_dir: "../input/dataset/test_v2"
 
 # Output paths for results
 output:
+  graph_results: "../output/results/graph_results.png"
   original: "../output/results/original.png"
-  segmented: "../output/results/segmented.png"
+  with_mask: "../output/results/segmented.png"
 
 # Model parameters for saving entire model or them weights
 model:
@@ -17,6 +18,7 @@ model:
   trained_paths:
     # Model save path
     entire: "../models/trained/model/asd_model"
+    entire_h5: "../models/trained/model/asd_model"
     # Weights save path
     weights: "../models/trained/weights/asd_weights"
   # Checkpoint paths
@@ -37,4 +39,4 @@ hyper:
   epochs: 10
   initial_epoch: 0
   # Learning rate
-  lr_rate: 1e-4
+  lr_rate: 1e-3

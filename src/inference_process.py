@@ -1,72 +1,58 @@
-import tensorflow as tf
 # Importing Keras class Model for force typing in function inference
 from keras import Model
 # Importing Keras optimizer Adam
 from keras.optimizers import Adam
 
 # Importing other libraries
-import numpy as np
-import pandas as pd
 import matplotlib.pyplot as plt
 
-# Importing class for data preprocessing and function for creating image paths array
-from data_handler import DataGenerator
+# Class for preprocessing data
+from src.data_handler import DataGenerator
+# Dice Loss & Score for model
+from src.model_builder import DiceLoss, DiceScore
+# To load config variables
+from src.utils import load_config
+# To simplify operations with config
+from attrdict import AttrDict
 
-# Importing class for loss function and Dice score metric
-from training_process import DiceLoss, DiceScore
 
-# Importing global variable from globals.py
-
-
-
-def inference(model: Model, batch_number, image_number):
+def inference(model: Model,
+              test_data_gen: DataGenerator,
+              predict_data_gen: DataGenerator,
+              batch_number: int,
+              image_number: int):
     """ This function for take model and make prediction on image
     Display mask predicted by our model
     :param model: trained Keras model;
+    :param test_data_gen: class with methods to generate batch of data for testing;
+    :param predict_data_gen: class with methods to generate batch of data for prediction;
     :param batch_number: batch number that will be used for prediction;
     :param image_number: image number that will be used for get image from true and predicted batch.
     """
 
-    # Preprocess train data for evaluating model
-    train_ground_truth = pd.read_csv(TRAIN_GROUND_TRUTH)
-    train_list_ids = train_ground_truth.index[train_ground_truth['EncodedPixels'].isnull() == False].tolist()
-    train_list_size = np.size(train_list_ids)
-    evaluation_list_ids = train_list_ids[:int(train_list_size * 0.20)]
-    eval_data_gen = DataGenerator(evaluation_list_ids, train_ground_truth, base_path=TRAIN_DIR)
+    # Load config
+    cfg = AttrDict(load_config("config.yaml"))
 
-    # Initializing class DiceScore for metrics in compiling the model
-    dice_score = DiceScore()
-    dice_loss = DiceLoss()
+    # Initializing hyperparameters
+    lr_rate = cfg.hyper.lr_rate
 
     # Configure the model for training.
-    model.compile(loss=dice_loss,
-                  optimizer=Adam(learning_rate=0.001),
-                  metrics=[dice_score])
+    model.compile(loss=DiceLoss(),
+                  optimizer=Adam(learning_rate=lr_rate),
+                  metrics=[DiceScore()])
 
     # Evaluate the model
-    model.evaluate(eval_data_gen)
-
-    # Set test & ground_truth paths
-    test_path = TEST_DIR
-    test_ground_truth_path = TEST_GROUND_TRUTH
-
-    # Set ground truth dataframe
-    test_ground_truth = pd.read_csv(test_ground_truth_path)
-    # Set list of ids
-    test_list_ids = test_ground_truth.index.tolist()
-
-    # Initializing test dataset class
-    test_data_gen = DataGenerator(test_list_ids, test_ground_truth, base_path=test_path, mode='predict')
+    model.evaluate(test_data_gen)
 
     # Define batch which will be used for prediction
-    true_image_batch = test_data_gen[batch_number]
+    true_image_batch = predict_data_gen[batch_number]
 
     # Take prediction from model
-    test_preds = model.predict(true_image_batch)
+    masks_preds = model.predict(true_image_batch)
 
     # Define true image and predicted mask
     true_image = true_image_batch[image_number]
-    pred_mask = test_preds[image_number]
+    pred_mask = masks_preds[image_number]
 
     # Show true image only
     plt.imshow(true_image)
@@ -86,17 +72,22 @@ def inference(model: Model, batch_number, image_number):
     plt.imshow(pred_mask, alpha=0.4)
     plt.axis('off')
     plt.show()
+    # Save results and images
+    plt.savefig(cfg.output.graph_results)
+    plt.imsave(cfg.output.original, true_image)
+    plt.imsave(cfg.output.with_mask, pred_mask)
 
-    for i in range(22):
-        plt.figure(figsize=(13, 7))
+    for i in range(cfg.preprocess.batch_size):
+        plt.figure(figsize=(14, 8))
         plt.subplot(1, 3, 1)
         plt.imshow(true_image_batch[i])
         plt.axis('off')
         plt.subplot(1, 3, 2)
-        plt.imshow(test_preds[i])
+        plt.imshow(masks_preds[i])
         plt.axis('off')
         plt.subplot(1, 3, 3)
         plt.imshow(true_image_batch[i])
-        plt.imshow(test_preds[i], alpha=0.4)
+        plt.imshow(masks_preds[i], alpha=0.4)
         plt.axis('off')
+        plt.tight_layout(h_pad=0.1, w_pad=0.1)
         plt.show()
