@@ -15,10 +15,12 @@ In project also used the libraries: NumPy, Pandas and Matplotlib.
 - **cfg/config.yaml** -- for storing config variables for model.
 - **model_debugger.py** -- it's core code file with calling all function and classes for preprocessing data, 
   building, training and using model.
-- **model_builder.py** -- file with function for building model.
-- **training_process.py** -- file with function for training model and class for creating new metric for scoring model.
+- **model_builder.py** -- file with function for building model with Keras functional API and classes of custom
+- metric and loss function.
+- **training_process.py** -- file with function for training model.
 - **inference_process.py** -- file with function for testing model.
 - **data_handler.py** -- file with class for building batch with images and masks.
+- **utils.py** -- file with all support functions.
 - **requirements.txt** -- file which store name all libraries that require for this project.
 
 ---
@@ -42,7 +44,23 @@ First get the repository
 ```commandline
 git clone https://github.com/lytmercy/asd_challenge.git
 ```
-Next run the main.py in console
+Next you need step into repo directory
+```commandline
+cd asd_challenge
+```
+Next create new python environment (my python is 3.10).
+```commandline
+python -m venv venv
+```
+Activate new environment
+```commandline
+./venv/Scripts/activate
+```
+And install all requirements
+```commandline
+pip install -r requirements.txt
+```
+And finally run the debugger.py in console
 ```commandline
 python src/model_debugger.py
 ```
