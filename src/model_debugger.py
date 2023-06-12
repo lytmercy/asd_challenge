@@ -112,7 +112,7 @@ def debugger():
                                      shuffle=False)
 
     # Run inference process
-    inference(asd_model, test_data_gen, predict_data_gen, 1, 23)
+    inference(asd_model, test_data_gen, predict_data_gen, 1, 22)
 
 
 if __name__ == "__main__":
