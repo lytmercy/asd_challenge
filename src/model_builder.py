@@ -36,12 +36,12 @@ class DiceLoss(Loss):
 
     def call(self, y_true: tf.Tensor, y_pred: tf.Tensor):
         """Compute dice loss"""
-        y_true, y_pred = np.cast(y_true, dtype=tf.float32), np.cast(y_pred, dtype=tf.float32)
+        y_true, y_pred = tf.cast(y_true, dtype=tf.float32), tf.cast(y_pred, dtype=tf.float32)
 
-        nominator = 2 * np.reduce_sum(np.abs(np.multiply(y_pred, y_true)))
-        denominator = np.reduce_sum(y_pred ** self.gama) + np.reduce_sum(y_true ** self.gama)
+        nominator = 2 * tf.reduce_sum(tf.abs(tf.multiply(y_pred, y_true)))
+        denominator = tf.reduce_sum(y_pred ** self.gama) + tf.reduce_sum(y_true ** self.gama)
 
-        return 1 - np.divide(nominator, denominator)
+        return 1 - tf.divide(nominator, denominator)
 
 
 class DiceScore(Metric):
@@ -69,6 +69,17 @@ class DiceScore(Metric):
 
     def update_state(self, y_true: tf.Tensor, y_pred: tf.Tensor, sample_weight: tf.Tensor | None = None):
         """Accumulate the prediction to current confusion matrix."""
+
+        # Cast tensors to new data type of this metric
+        y_true = tf.cast(y_true, self._dtype)
+        y_pred = tf.cast(y_pred, self._dtype)
+
+        # Flatten the input if its rank > 1.
+        if y_pred.shape.ndims > 1:
+            y_pred = tf.reshape(y_pred, [-1])
+        if y_true.shape.ndims > 1:
+            y_true = tf.reshape(y_true, [-1])
+
         current_cm = tf.math.confusion_matrix(
                 y_true,
                 y_pred,
@@ -77,7 +88,7 @@ class DiceScore(Metric):
                 dtype=self._dtype
         )
 
-        self.total_cm.asssifn_add(current_cm)
+        self.total_cm.assign_add(current_cm)
 
     def result(self):
         """Compute the Dice score via the confusion matrix."""
@@ -124,12 +135,12 @@ def get_model(image_size: Tuple[int, int], num_classes: int) -> keras.Model:
     # Initialize Input layer
     inputs = Input(shape=image_size + (3,))
     # Initialize Data augmentation layer
-    x = data_augmentation(inputs)  # augment images (only happens during training)
+    # x = data_augmentation(inputs)  # augment images (only happens during training)
 
     # ## [First half of the network: down-sampling inputs] ## #
 
     # Entry block
-    x = Conv2D(32, 3, strides=2, padding='same')(x)
+    x = Conv2D(32, 3, strides=2, padding='same')(inputs)
     x = BatchNormalization()(x)
     x = Activation('relu')(x)
 

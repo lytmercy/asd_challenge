@@ -42,7 +42,8 @@ def inference(model: Model,
                   metrics=[DiceScore()])
 
     # Evaluate the model
-    model.evaluate(test_data_gen)
+    loss, score = model.evaluate(test_data_gen)
+    print("Dice Loss: {}, Dice Score: {}".format(loss, score))
 
     # Define batch which will be used for prediction
     true_image_batch = predict_data_gen[batch_number]

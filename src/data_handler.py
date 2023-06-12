@@ -5,7 +5,6 @@ from keras.utils import Sequence
 
 import numpy as np
 
-from typing import List, Tuple
 # To use help functions
 from src.utils import load_prepare_image, tf_rle_decode
 
@@ -14,12 +13,12 @@ class DataGenerator(Sequence):
     """ Class generates data for Keras model """
 
     def __init__(self,
-                 list_ids: List[str],
+                 list_ids: list[str],
                  ground_truth_df: pd.DataFrame,
                  mode: str = 'fit',
                  base_path: str = '../input/dataset/train_v2',
                  batch_size: int = 32,
-                 img_size: Tuple[int, int] = (256, 256),
+                 img_size: tuple[int, int] = (256, 256),
                  color_channels: int = 3,
                  random_state: int = 17,
                  shuffle: bool = True):
@@ -94,8 +93,7 @@ class DataGenerator(Sequence):
         X = np.empty((self.batch_size, *self.image_size, self.color_channels))
 
         # Generate data from ground_truth_dataframe with ids from list_ids_batch
-        for i, ID in enumerate(list_ids_batch):
-            image_id = self.gt_df['ImageId'].iloc[ID]
+        for i, image_id in enumerate(list_ids_batch):
             image_path = f"{self.base_path}\\{image_id}"
             image = load_prepare_image(image_path, self.image_size)
 
@@ -109,16 +107,16 @@ class DataGenerator(Sequence):
         # Initialization y as an empty numpy array with determined shape
         y = np.empty((self.batch_size, *self.image_size, 1))
         # Generate masks from gt_df with ids from list_ids_batch
-        for i, ID in enumerate(list_ids_batch):
+        for i, image_id in enumerate(list_ids_batch):
             # Extract image id for get masks from gt_df
-            image_id = self.gt_df["ImageId"].iloc[ID]
+            # image_id = self.gt_df["ImageId"].iloc[ID]
             # Get masks for concrete image
             gt_df = self.gt_df[self.gt_df["ImageId"] == image_id]
             # Get coded rle string from dataframe of masks for concrete image
             coded_rle_strings = gt_df["EncodedPixels"].values
             # Set tensor with zeros value for all masks
             # (768, 768) - it's shape of ground truth masks
-            all_masks = tf.zeros((768, 768), dtype=tf.uint8)
+            all_masks = tf.zeros((768, 768), dtype=tf.float32)
             # Iter through rle strings of all masks for concrete image
             if coded_rle_strings[0] is not np.nan:
                 for mask in coded_rle_strings:

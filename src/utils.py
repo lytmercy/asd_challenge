@@ -4,14 +4,13 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 import os
-from typing import Tuple, List, Dict
 # To process config YAML File
 import yaml
 
 CONFIG_PATH = "../cfg/"
 
 
-def load_config(config_name: str) -> Dict:
+def load_config(config_name: str) -> dict:
     """
     Load config from YAML type file.
     :param config_name: name of config yaml file;
@@ -26,7 +25,7 @@ def load_config(config_name: str) -> Dict:
     return config
 
 
-def tf_rle_decode(rle_string: str, shape=(768, 768)) -> tf.Tensor[tf.float32]:
+def tf_rle_decode(rle_string: str, shape=(768, 768)) -> tf.Tensor:
     """
     Function for decoding run-length encoding mask from string.
     :param rle_string: run-length string of encoded segmentation mask from csv file;
@@ -67,7 +66,7 @@ def tf_rle_decode(rle_string: str, shape=(768, 768)) -> tf.Tensor[tf.float32]:
     return tf.cast(mask, tf.float32) / 255.
 
 
-def train_valid_ids_split(list_ids: List[str], train_split=0.8, shuffle=False, random_seed=17) -> Tuple[List, List]:
+def train_valid_ids_split(list_ids: list[str], train_split=0.8, shuffle=False, random_seed=17) -> tuple[list, list]:
     """
     Function for split list_ids to train and valid list with ids.
     :param list_ids: list with train list_ids;
@@ -96,7 +95,7 @@ def train_valid_ids_split(list_ids: List[str], train_split=0.8, shuffle=False, r
     return train_list_ids, valid_list_ids
 
 
-def load_prepare_image(image_path: str, image_size: Tuple[int, int]) -> tf.Tensor[tf.float32]:
+def load_prepare_image(image_path: str, image_size: tuple[int, int]) -> tf.Tensor:
     """
     Loading and processing image from directory.
     :param image_path: path to file where store image;

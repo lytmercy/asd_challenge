@@ -15,12 +15,14 @@ output:
 # Model parameters for saving entire model or them weights
 model:
   # Trained model save paths
-  trained_paths:
+  entire_path: "../models/trained/model/"
+  weights_path: "../models/trained/weights/"
+  files:
     # Model save path
-    entire: "../models/trained/model/asd_model"
-    entire_h5: "../models/trained/model/asd_model"
+    entire: "asd_model"
+    h5: "asd_model.h5"
     # Weights save path
-    weights: "../models/trained/weights/asd_weights"
+    weights: "asd_weights"
   # Checkpoint paths
   ckpt_paths:
     # Save path
@@ -30,13 +32,13 @@ model:
 
 # Preprocess default parameters
 preprocess:
-  image_size: [256, 256]
+  image_size: [128, 128]
   color_channels: 3
-  batch_size: 20
+  batch_size: 25
 
 # Hyperparameters
 hyper:
   epochs: 10
   initial_epoch: 0
   # Learning rate
-  lr_rate: 1e-3
+  lr_rate: 0.001

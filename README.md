@@ -12,13 +12,13 @@ In project also used the libraries: NumPy, Pandas and Matplotlib.
 
 **_Project have that files_**:
 - **dataset_analysis.ipynb** -- containing exploring of data from Challenge.
-- **globals.py** -- for storing global variables for project.
-- **main.py** -- it's core code file with calling all function and classes for preprocessing data, 
+- **cfg/config.yaml** -- for storing config variables for model.
+- **model_debugger.py** -- it's core code file with calling all function and classes for preprocessing data, 
   building, training and using model.
-- **model_build.py** -- file with function for building model.
-- **model_training.py** -- file with function for training model and class for creating new metric for scoring model.
-- **model_inference.py** -- file with function for testing model.
-- **preprocessing_data.py** -- file with class for building batch with images and masks.
+- **model_builder.py** -- file with function for building model.
+- **training_process.py** -- file with function for training model and class for creating new metric for scoring model.
+- **inference_process.py** -- file with function for testing model.
+- **data_handler.py** -- file with class for building batch with images and masks.
 - **requirements.txt** -- file which store name all libraries that require for this project.
 
 ---
@@ -32,7 +32,7 @@ Model architecture has:
 And standard U-Net architecture from code example in 
 Keras documentation ([Image Segmentation with a U-Net-like architecture](https://keras.io/examples/vision/oxford_pets_image_segmentation/#prepare-unet-xceptionstyle-model)):
 
-[My model build code for this project](model_build.py)
+[My model build code for this project](src/model_builder.py)
 
 ---
 
@@ -44,14 +44,14 @@ git clone https://github.com/lytmercy/asd_challenge.git
 ```
 Next run the main.py in console
 ```commandline
-python main.py
+python src/model_debugger.py
 ```
 
-If you want check training process you can move out files of weight from path `asd_challenge/model/*`
+If you want check training process you can move out files of weight from path `models/trained/weights/*`
 ```commandline
-mv asd_challenge/model/* your/path/
+mv models/trained/weights/* your/path/for/my/weights/*
 ```
-And next run again `main.py`
+And next run again `model_debugger.py`
 
 ---
 
@@ -60,8 +60,8 @@ And next run again `main.py`
 In order not to wait a long time for the training result, 
 I used only 30% of the images from those with a ground-truth mask.
 
-### Dice Score
-For Dice Score metric I use this formula, from this [science paper (on page 6)](https://arxiv.org/pdf/1606.04797v1.pdf):
+### Dice Loss
+For Dice Coefficient, I use this formula and subtract it from 1, to get dice loss. From this [science paper (on page 6)](https://arxiv.org/pdf/1606.04797v1.pdf):
 
 <img alt="formula" height="150" src="https://latex.codecogs.com/svg.image?D&amp;space;=&amp;space;\frac{2\sum\limits_{i}^{N}&amp;space;p_i&amp;space;g_i}{\sum\limits_{i}^{N}&amp;space;p_i^2&amp;space;&amp;plus;&amp;space;\sum\limits_{i}^{N}&amp;space;g_i^2}" width="200"/>
 
